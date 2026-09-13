@@ -26,6 +26,7 @@ for patch_file in "$ROOT_DIR"/Patches/*.patch; do
   echo "Applying $(basename "$patch_file")"
   git apply "$patch_file" || echo "  SKIP: patch does not apply"
 done
+cp "$ROOT_DIR/olcrtc-compat/mobilecompat.go" ./mobile/mobilecompat.go
 gomobile bind -target=ios -o "$FRAMEWORK_DIR/Mobile.xcframework" ./mobile
 popd >/dev/null
 
