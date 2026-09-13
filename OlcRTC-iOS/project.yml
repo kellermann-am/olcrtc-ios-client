@@ -7,6 +7,7 @@ settings:
   base:
     SWIFT_VERSION: "5.10"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    OTHER_LDFLAGS: "-lresolv"
 packages:
   Tun2SocksKit:
     url: https://github.com/EbrahimTahernejad/Tun2SocksKit
