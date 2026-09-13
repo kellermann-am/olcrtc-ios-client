@@ -43,46 +43,41 @@ func SetVideoOptions(width, height, fps int, bitrate, hw string, qrSize int, qrR
 }
 
 // StartWithTransport applies the remaining parameters and starts the runtime.
-func StartWithTransport(carrier, transport, room, clientID, keyHex string, socksPort int, socksUser, socksPass string) (bool, error) {
+// Returns error only; gomobile maps this to a Swift Bool (success) + NSError out-param.
+func StartWithTransport(carrier, transport, room, clientID, keyHex string, socksPort int, socksUser, socksPass string) error {
 	rt := compat()
 	if err := rt.SetProvider(carrier); err != nil {
-		return false, err
+		return err
 	}
 	if err := rt.SetTransport(transport); err != nil {
-		return false, err
+		return err
 	}
 	if err := rt.SetRoom(room); err != nil {
-		return false, err
+		return err
 	}
 	if clientID != "" {
 		rt.SetDeviceID(clientID)
 	}
 	if err := rt.SetKey(keyHex); err != nil {
-		return false, err
+		return err
 	}
 	if err := rt.SetSocksListenHost("127.0.0.1"); err != nil {
-		return false, err
+		return err
 	}
 	if err := rt.SetSocksPort(socksPort); err != nil {
-		return false, err
+		return err
 	}
 	if socksUser != "" || socksPass != "" {
 		if err := rt.SetSocksCredentials(socksUser, socksPass); err != nil {
-			return false, err
+			return err
 		}
 	}
-	if err := rt.Start(); err != nil {
-		return false, err
-	}
-	return true, nil
+	return rt.Start()
 }
 
-// WaitReady waits for readiness; returns true on success.
-func WaitReady(timeoutMillis int) (bool, error) {
-	if err := compat().WaitReady(timeoutMillis); err != nil {
-		return false, err
-	}
-	return true, nil
+// WaitReady waits for readiness. Returns error only (Swift Bool success + NSError out-param).
+func WaitReady(timeoutMillis int) error {
+	return compat().WaitReady(timeoutMillis)
 }
 
 // Stop stops the runtime.
