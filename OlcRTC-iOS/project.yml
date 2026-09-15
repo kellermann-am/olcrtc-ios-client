@@ -23,6 +23,8 @@ targets:
       path: Sources/OlcRTCApp/Info.plist
       properties:
         CFBundleDisplayName: OlcRTC
+        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "2"
         CFBundleURLTypes:
           - CFBundleURLName: ru.pasklove.olcrtc
             CFBundleURLSchemes:

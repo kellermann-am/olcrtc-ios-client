@@ -171,9 +171,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         settings.ipv4Settings = ipv4
         settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "1.1.1.1"])
 
-        if mode == .systemProxy {
-            settings.proxySettings = proxySettings(port: port)
-        }
+        // The engine SOCKS resolves domain names on CONNECT but does not serve UDP
+        // ASSOCIATE, so UDP DNS through the packet path is dropped (Telegram works on
+        // hard-coded IPs, browsers die on name resolution). Advertise the SOCKS proxy
+        // in every mode: proxy-aware apps (Safari) hand the hostname to the engine and
+        // resolve there, while packet apps keep using the routes above.
+        settings.proxySettings = proxySettings(port: port)
         return settings
     }
 

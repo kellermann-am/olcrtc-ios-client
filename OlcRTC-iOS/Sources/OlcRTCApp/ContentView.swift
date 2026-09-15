@@ -100,6 +100,14 @@ struct ContentView: View {
                         },
                         ping: { profile in
                             hapticFeedback(.light)
+                            // The ping spins up a second olcRTC engine; while the system VPN
+                            // engine is live that second engine joins the same room with the
+                            // same clientID and collides (both die by liveness). Never ping
+                            // while the tunnel is up — test through the running tunnel instead.
+                            if vpn.status == .connected || vpn.status == .connecting {
+                                showToast("Тоннель уже поднят — второй движок для проверки не запускаю", type: .info)
+                                return
+                            }
                             Task {
                                 await proxy.pingProfile(profile)
                             }
