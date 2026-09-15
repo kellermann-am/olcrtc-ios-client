@@ -8,6 +8,11 @@ settings:
     SWIFT_VERSION: "5.10"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     OTHER_LDFLAGS: "-lresolv"
+    DEVELOPMENT_TEAM: 93J5DNT2GU
+packages:
+  Tun2SocksKit:
+    url: https://github.com/EbrahimTahernejad/Tun2SocksKit
+    from: 5.14.4
 targets:
   OlcRTCClient:
     type: application
@@ -33,9 +38,36 @@ targets:
     dependencies:
       - framework: Frameworks/Mobile.xcframework
         embed: true
+      - target: OlcRTCPacketTunnel
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.pasklove.olcrtc
+  OlcRTCPacketTunnel:
+    type: app-extension
+    platform: iOS
+    productType: com.apple.product-type.app-extension
+    sources:
+      - Sources/OlcRTCPacketTunnel
+    info:
+      path: Sources/OlcRTCPacketTunnel/Info.plist
+      properties:
+        CFBundleDisplayName: OlcRTC Tunnel
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: Sources/OlcRTCPacketTunnel/OlcRTCPacketTunnel.entitlements
+      properties: {}
+    dependencies:
+      - framework: Frameworks/Mobile.xcframework
+        embed: true
+      - framework: Frameworks/Libbox.xcframework
+        embed: true
+      - package: Tun2SocksKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ru.pasklove.olcrtc.tunnel
   OlcRTCAppTests:
     type: bundle.unit-test
     platform: iOS
