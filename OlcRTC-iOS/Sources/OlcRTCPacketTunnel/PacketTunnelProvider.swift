@@ -184,7 +184,20 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             ipv4.includedRoutes = [NEIPv4Route(destinationAddress: "192.0.2.0", subnetMask: "255.255.255.0")]
         }
         settings.ipv4Settings = ipv4
-        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "1.1.1.1"])
+        if mode == .fullTunnel {
+            // «Весь»: DNS уходит в tun и перехватывается mapdns (hev). Он
+            // выдаёт fake-ip из 198.18.0.0/15, кэширует домен, а на коннекте к
+            // fake-ip разворачивает обратно в domain-CONNECT — сервер резолвит
+            // домен на выходе (egress). Реальный DNS с устройства не утекает и
+            // не режется белыми списками. UDP ASSOCIATE движку не нужен.
+            let dns = NEDNSSettings(servers: ["198.18.0.2"])
+            dns.matchDomains = [""]
+            settings.dnsSettings = dns
+        } else {
+            // «Локальный»/systemProxy: tun не забирает трафик, DNS резолвится
+            // системой напрямую (как и раньше).
+            settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "1.1.1.1"])
+        }
 
         if mode == .systemProxy {
             settings.proxySettings = proxySettings(port: port)
@@ -239,8 +252,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         #if canImport(Mobile)
         switch transport.lowercased() {
         case "vp8channel":
+            // fps по умолчанию 30 — совпадает с сервером (config.yaml vp8.fps=30).
+            // На 60 клиент впустую жёг CPU (двойной энкод против сервера) →
+            // нагрев телефона. Профиль может переопределить через vp8-fps=.
             MobileSetVP8Options(
-                payloadInt(payload, "vp8-fps", default: 60),
+                payloadInt(payload, "vp8-fps", default: 30),
                 payloadInt(payload, "vp8-batch", default: 64)
             )
         case "seichannel":
@@ -319,6 +335,13 @@ private final class Tun2SocksPacketEngine {
           address: '127.0.0.1'
           udp: 'udp'
         \(auth)
+
+        mapdns:
+          address: '198.18.0.2'
+          port: 53
+          network: '198.18.0.0'
+          netmask: '255.254.0.0'
+          cache-size: 10000
 
         misc:
           task-stack-size: 24576

@@ -56,7 +56,7 @@ enum OlcRTCEngine {
         switch profile.transport {
         case "vp8channel":
             MobileSetVP8Options(
-                profile.payloadInt("vp8-fps", default: 60),
+                profile.payloadInt("vp8-fps", default: 30),
                 profile.payloadInt("vp8-batch", default: 64)
             )
         case "seichannel":
