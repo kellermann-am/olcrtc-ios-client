@@ -15,7 +15,7 @@ final class OlcRTCBoxTunnel: NSObject {
     private weak var provider: NEPacketTunnelProvider?
     private var commandServer: LibboxCommandServer?
     private var monitor: NWPathMonitor?
-    private var listener: LibboxInterfaceUpdateListener?
+    private var listener: LibboxInterfaceUpdateListenerProtocol?
     private static var didSetup = false
 
     init(provider: NEPacketTunnelProvider) {
@@ -100,8 +100,8 @@ final class OlcRTCBoxTunnel: NSObject {
     }
 }
 
-extension OlcRTCBoxTunnel: LibboxPlatformInterface {
-    func openTun(_ options: LibboxTunOptions?) throws -> Int32 {
+extension OlcRTCBoxTunnel: LibboxPlatformInterfaceProtocol {
+    func openTun(_ options: LibboxTunOptionsProtocol?) throws -> Int32 {
         guard let options, let provider = provider else {
             throw NSError(domain: "olcrtc.box", code: 2)
         }
@@ -161,16 +161,16 @@ extension OlcRTCBoxTunnel: LibboxPlatformInterface {
     func includeAllNetworks() -> Bool { false }
     func clearDNSCache() {}
     func readWIFIState() -> LibboxWIFIState? { nil }
-    func systemCertificates() -> LibboxStringIterator? { nil }
-    func localDNSTransport() -> LibboxLocalDNSTransport? { nil }
+    func systemCertificates() -> LibboxStringIteratorProtocol? { nil }
+    func localDNSTransport() -> LibboxLocalDNSTransportProtocol? { nil }
     func sendNotification(_ notification: LibboxNotification?) throws {}
     func findConnectionOwner(_ ipProtocol: Int32, sourceAddress: String?, sourcePort: Int32, destinationAddress: String?, destinationPort: Int32) throws -> LibboxConnectionOwner {
         throw NSError(domain: "olcrtc.box", code: 4)
     }
-    func getInterfaces() throws -> LibboxNetworkInterfaceIterator {
+    func getInterfaces() throws -> LibboxNetworkInterfaceIteratorProtocol {
         EmptyInterfaceIterator()
     }
-    func startDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListener?) throws {
+    func startDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListenerProtocol?) throws {
         self.listener = listener
         let m = NWPathMonitor()
         m.pathUpdateHandler = { [weak self] path in
@@ -183,14 +183,14 @@ extension OlcRTCBoxTunnel: LibboxPlatformInterface {
         m.start(queue: DispatchQueue(label: "olcrtc.box.path"))
         monitor = m
     }
-    func closeDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListener?) throws {
+    func closeDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListenerProtocol?) throws {
         monitor?.cancel()
         monitor = nil
         self.listener = nil
     }
 }
 
-extension OlcRTCBoxTunnel: LibboxCommandServerHandler {
+extension OlcRTCBoxTunnel: LibboxCommandServerHandlerProtocol {
     func getSystemProxyStatus() throws -> LibboxSystemProxyStatus {
         let s = LibboxSystemProxyStatus()
         s.available = false
@@ -205,7 +205,7 @@ extension OlcRTCBoxTunnel: LibboxCommandServerHandler {
     }
 }
 
-final class EmptyInterfaceIterator: NSObject, LibboxNetworkInterfaceIterator {
+final class EmptyInterfaceIterator: NSObject, LibboxNetworkInterfaceIteratorProtocol {
     func hasNext() -> Bool { false }
     func next() -> LibboxNetworkInterface? { nil }
 }
