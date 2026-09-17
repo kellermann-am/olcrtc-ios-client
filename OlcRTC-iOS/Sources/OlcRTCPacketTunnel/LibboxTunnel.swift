@@ -155,15 +155,15 @@ extension OlcRTCBoxTunnel: LibboxPlatformInterfaceProtocol {
     }
 
     func useProcFS() -> Bool { false }
-    func usePlatformAutoDetectInterfaceControl() -> Bool { false }
-    func autoDetectInterfaceControl(_ fd: Int32) throws {}
+    func usePlatformAutoDetectControl() -> Bool { false }
+    func autoDetectControl(_ fd: Int32) throws {}
     func underNetworkExtension() -> Bool { true }
     func includeAllNetworks() -> Bool { false }
     func clearDNSCache() {}
     func readWIFIState() -> LibboxWIFIState? { nil }
     func systemCertificates() -> LibboxStringIteratorProtocol? { nil }
     func localDNSTransport() -> LibboxLocalDNSTransportProtocol? { nil }
-    func sendNotification(_ notification: LibboxNotification?) throws {}
+    func send(_ notification: LibboxNotification?) throws {}
     func findConnectionOwner(_ ipProtocol: Int32, sourceAddress: String?, sourcePort: Int32, destinationAddress: String?, destinationPort: Int32) throws -> LibboxConnectionOwner {
         throw NSError(domain: "olcrtc.box", code: 4)
     }
