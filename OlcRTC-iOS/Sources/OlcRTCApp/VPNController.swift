@@ -75,6 +75,10 @@ final class VPNController: ObservableObject {
     private static let tunnelModeKey = "olcrtc.vpn.tunnelMode"
     private static let routingPresetKey = "olcrtc.vpn.routingPreset"
     private var statusRefreshTask: Task<Void, Never>?
+    // Дисконнект-ошибку тянем РОВНО один раз за эпизод: и polling, и
+    // NEVPNStatusDidChange-observer зовут updateStatus, а конкурентный/повторный
+    // fetchLastDisconnectError на свежезагруженных manager'ах роняет контейнер.
+    private var disconnectErrorFetched = false
 
     init() {
         let savedMode = UserDefaults.standard.string(forKey: Self.tunnelModeKey)
@@ -192,13 +196,18 @@ final class VPNController: ObservableObject {
     private func updateStatus(from manager: NETunnelProviderManager) {
         switch manager.connection.status {
         case .connected:
+            disconnectErrorFetched = false
             status = .connected
             lastMessage = "VPN включен: \(tunnelMode.title)."
         case .connecting, .reasserting:
+            disconnectErrorFetched = false
             status = .connecting
         case .disconnected:
             status = .disconnected
-            fetchDisconnectError(from: manager)
+            if !disconnectErrorFetched {
+                disconnectErrorFetched = true
+                fetchDisconnectError(from: manager)
+            }
         case .disconnecting:
             status = .disconnected
         case .invalid:
