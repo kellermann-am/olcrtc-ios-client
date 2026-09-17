@@ -84,6 +84,23 @@ final class VPNController: ObservableObject {
         Task {
             await refresh()
         }
+        // Живо отслеживаем любые смены статуса тоннеля (в т.ч. поздний отвал по
+        // ready-timeout за пределами polling-окна), чтобы поймать disconnect
+        // error всегда.
+        NotificationCenter.default.addObserver(
+            forName: .NEVPNStatusDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.handleStatusChange()
+            }
+        }
+    }
+
+    private func handleStatusChange() async {
+        guard let manager = try? await loadManager() else { return }
+        updateStatus(from: manager)
     }
 
     func refresh() async {
@@ -176,16 +193,35 @@ final class VPNController: ObservableObject {
         switch manager.connection.status {
         case .connected:
             status = .connected
+            lastMessage = "VPN включен: \(tunnelMode.title)."
         case .connecting, .reasserting:
             status = .connecting
         case .disconnected:
             status = .disconnected
+            fetchDisconnectError(from: manager)
         case .disconnecting:
             status = .disconnected
         case .invalid:
             status = .installed
         @unknown default:
             status = .installed
+        }
+    }
+
+    // Диагностика: когда extension падает, статус просто уходит в
+    // disconnected, а причина теряется. Достаём последнюю ошибку тоннеля и
+    // кладём в lastMessage, чтобы видеть реальную причину прямо в UI
+    // (битый профиль → «configuration incomplete»; краш плагина → системный
+    // текст NEVPNError). iOS 16+.
+    private func fetchDisconnectError(from manager: NETunnelProviderManager) {
+        guard #available(iOS 16.0, *) else { return }
+        manager.connection.fetchLastDisconnectError { [weak self] error in
+            Task { @MainActor in
+                guard let self else { return }
+                guard let error else { return }
+                let ns = error as NSError
+                self.lastMessage = "Отключено: \(ns.localizedDescription) [\(ns.domain)#\(ns.code)]"
+            }
         }
     }
 
