@@ -16,7 +16,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         case splitTunnel
 
         var usesPacketEngine: Bool {
-            self != .systemProxy
+            // Только «Весь» реально забирает пакеты в tun (и гоняет Tun2Socks).
+            // «Локальный» (splitTunnel) поднимает движок+SOCKS, но трафик не
+            // захватывает — через тоннель идут лишь приложения с явно
+            // прописанным SOCKS 127.0.0.1:<port>.
+            self == .fullTunnel
         }
     }
 
@@ -162,21 +166,25 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         settings.mtu = 1280
 
         let ipv4 = NEIPv4Settings(addresses: ["10.88.0.2"], subnetMasks: ["255.255.255.0"])
-        if mode.usesPacketEngine {
+        if mode == .fullTunnel {
+            // Весь трафик устройства в тоннель (локальные сети — по пресету напрямую).
             ipv4.includedRoutes = [NEIPv4Route.default()]
-            if mode == .splitTunnel || routingPreset.shouldBypassLocalRoutes {
+            if routingPreset.shouldBypassLocalRoutes {
                 ipv4.excludedRoutes = Self.privateAndLocalRoutes()
             }
+        } else {
+            // Локальный: тоннель НЕ забирает трафик устройства. Один фиктивный
+            // маршрут (TEST-NET 192.0.2.0/24), чтобы iOS принял конфиг tun, но
+            // реальные пакеты в него не попадали. SOCKS остаётся доступен по
+            // loopback для приложений, где он прописан вручную.
+            ipv4.includedRoutes = [NEIPv4Route(destinationAddress: "192.0.2.0", subnetMask: "255.255.255.0")]
         }
         settings.ipv4Settings = ipv4
         settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "1.1.1.1"])
 
-        // The engine SOCKS resolves domain names on CONNECT but does not serve UDP
-        // ASSOCIATE, so UDP DNS through the packet path is dropped (Telegram works on
-        // hard-coded IPs, browsers die on name resolution). Advertise the SOCKS proxy
-        // in every mode: proxy-aware apps (Safari) hand the hostname to the engine and
-        // resolve there, while packet apps keep using the routes above.
-        settings.proxySettings = proxySettings(port: port)
+        if mode == .systemProxy {
+            settings.proxySettings = proxySettings(port: port)
+        }
         return settings
     }
 

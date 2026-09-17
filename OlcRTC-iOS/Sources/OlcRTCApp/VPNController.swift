@@ -19,7 +19,7 @@ final class VPNController: ObservableObject {
             case .fullTunnel:
                 return "Весь"
             case .splitTunnel:
-                return "Локальные"
+                return "Локальный"
             }
         }
 
@@ -28,9 +28,9 @@ final class VPNController: ObservableObject {
             case .systemProxy:
                 return "HTTP/HTTPS через системный SOCKS/PAC"
             case .fullTunnel:
-                return "Packet tunnel через tun2socks"
+                return "Весь трафик устройства через тоннель"
             case .splitTunnel:
-                return "Packet tunnel, только private/local сети напрямую"
+                return "Только приложения с прописанным SOCKS 127.0.0.1:18080"
             }
         }
     }
