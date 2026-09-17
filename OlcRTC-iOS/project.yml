@@ -67,6 +67,7 @@ targets:
       - framework: Frameworks/Libbox.xcframework
         embed: true
       - package: Tun2SocksKit
+      - sdk: UIKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.pasklove.olcrtc.tunnel
