@@ -101,7 +101,7 @@ final class OlcRTCBoxTunnel: NSObject {
 }
 
 extension OlcRTCBoxTunnel: LibboxPlatformInterfaceProtocol {
-    func openTun(_ options: LibboxTunOptionsProtocol?) throws -> Int32 {
+    func openTun(_ options: LibboxTunOptionsProtocol?, ret0_ ret0: UnsafeMutablePointer<Int32>?) throws {
         guard let options, let provider = provider else {
             throw NSError(domain: "olcrtc.box", code: 2)
         }
@@ -151,7 +151,7 @@ extension OlcRTCBoxTunnel: LibboxPlatformInterfaceProtocol {
         }
         if fd < 0 { fd = LibboxGetTunnelFileDescriptor() }
         if fd < 0 { throw NSError(domain: "olcrtc.box", code: 3) }
-        return fd
+        ret0?.pointee = fd
     }
 
     func useProcFS() -> Bool { false }
