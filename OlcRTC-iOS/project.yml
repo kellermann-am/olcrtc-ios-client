@@ -23,8 +23,8 @@ targets:
       path: Sources/OlcRTCApp/Info.plist
       properties:
         CFBundleDisplayName: OlcRTC
-        CFBundleShortVersionString: "1.5"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "1.6"
+        CFBundleVersion: "7"
         CFBundleURLTypes:
           - CFBundleURLName: ru.pasklove.olcrtc
             CFBundleURLSchemes:
@@ -64,10 +64,7 @@ targets:
     dependencies:
       - framework: Frameworks/Mobile.xcframework
         embed: true
-      - framework: Frameworks/Libbox.xcframework
-        embed: true
       - package: Tun2SocksKit
-      - sdk: UIKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.pasklove.olcrtc.tunnel

@@ -38,7 +38,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var socksPort = 18080
     private var tunnelStarted = false
     private var packetEngine: Tun2SocksPacketEngine?
-    private var boxTunnel: OlcRTCBoxTunnel?
 
     override func startTunnel(
         options: [String: NSObject]?,
@@ -108,31 +107,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
 
-        if tunnelMode == .fullTunnel {
-            // «Весь»: пакетным стеком рулит sing-box (fake-ip DNS) — он сам
-            // применяет сетевые настройки tun через openTun и забирает fd.
-            // Движок olcRTC остаётся поднятым и отдаёт SOCKS, куда sing-box
-            // шлёт доменный CONNECT. Свой трафик движка iOS в этот tun не
-            // заворачивает — петли нет.
-            do {
-                let box = OlcRTCBoxTunnel(provider: self)
-                try box.start(configContent: OlcRTCBoxTunnel.config(
-                    socksPort: socksPort,
-                    socksUser: socksUser,
-                    socksPass: socksPass
-                ))
-                boxTunnel = box
-                tunnelStarted = true
-                completionHandler(nil)
-            } catch {
-                MobileStop()
-                completionHandler(error)
-            }
-            return
-        }
-
-        // «Локальный»/прочее: движок отдаёт только SOCKS, tun трафик не
-        // забирает (в networkSettings — фиктивный маршрут). Tun2Socks не нужен.
+        // «Весь» — default route + Tun2Socks (hev, чистый C) заворачивает весь
+        // трафик устройства в SOCKS движка. «Локальный»/прочее — фиктивный
+        // маршрут, tun ничего не забирает, ходят только приложения с явно
+        // прописанным SOCKS 127.0.0.1:<port>.
+        // Libbox/sing-box из extension убран: два Go-рантайма (движок Mobile +
+        // sing-box Libbox) в одном процессе несовместимы и детерминированно
+        // роняли extension (SIGSEGV nil+0x30 на каждом запуске, оба режима).
         let settings = networkSettings(mode: tunnelMode, routingPreset: routingPreset, port: socksPort)
         setTunnelNetworkSettings(settings) { [weak self] error in
             guard let self else {
@@ -144,6 +125,21 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 MobileStop()
                 completionHandler(error)
                 return
+            }
+            if tunnelMode.usesPacketEngine {
+                do {
+                    let engine = try Tun2SocksPacketEngine(
+                        socksPort: self.socksPort,
+                        socksUser: socksUser,
+                        socksPass: socksPass
+                    )
+                    try engine.start()
+                    self.packetEngine = engine
+                } catch {
+                    MobileStop()
+                    completionHandler(error)
+                    return
+                }
             }
             self.tunnelStarted = true
             completionHandler(nil)
@@ -159,10 +155,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     ) {
         packetEngine?.stop()
         packetEngine = nil
-        #if canImport(Libbox)
-        boxTunnel?.stop()
-        boxTunnel = nil
-        #endif
 
         #if canImport(Mobile)
         if tunnelStarted {
