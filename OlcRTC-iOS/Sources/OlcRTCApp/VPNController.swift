@@ -79,6 +79,14 @@ final class VPNController: ObservableObject {
     // NEVPNStatusDidChange-observer зовут updateStatus, а конкурентный/повторный
     // fetchLastDisconnectError на свежезагруженных manager'ах роняет контейнер.
     private var disconnectErrorFetched = false
+    // Кешируем manager: loadAllFromPreferences() пересоздаёт NEVPNConnection и
+    // САМА эмитит NEVPNStatusDidChange. Раньше обработчик нотификации звал
+    // loadManager()→loadAllFromPreferences() на каждую смену статуса →
+    // реэнтрантный шторм: ~2800 mach-портов/сек, лимит 131072 за ~47с →
+    // EXC_RESOURCE (PORT_SPACE), нагрев и заморозка UI. Теперь грузим один раз.
+    private var cachedManager: NETunnelProviderManager?
+    // Коалесинг обработчика смены статуса — не допускаем наложения вызовов.
+    private var statusChangeInFlight = false
 
     init() {
         let savedMode = UserDefaults.standard.string(forKey: Self.tunnelModeKey)
@@ -103,6 +111,13 @@ final class VPNController: ObservableObject {
     }
 
     private func handleStatusChange() async {
+        // Коалесинг: NEVPNStatusDidChange может сыпаться пачками; не наслаиваем
+        // обработчики (каждый лишний — ещё XPC/порты).
+        if statusChangeInFlight { return }
+        statusChangeInFlight = true
+        defer { statusChangeInFlight = false }
+        // Берём кешированный manager (без loadAllFromPreferences). Статус
+        // читается из живого connection.status.
         guard let manager = try? await loadManager() else { return }
         updateStatus(from: manager)
     }
@@ -148,6 +163,7 @@ final class VPNController: ObservableObject {
             manager.isEnabled = true
             try await manager.saveToPreferences()
             try await manager.loadFromPreferences()
+            cachedManager = manager
             status = .installed
             lastMessage = "VPN профиль установлен: \(tunnelMode.subtitle), \(routingPreset.title)."
         } catch {
@@ -189,8 +205,15 @@ final class VPNController: ObservableObject {
     }
 
     private func loadManager() async throws -> NETunnelProviderManager? {
+        // Один раз грузим из preferences и держим ссылку. Повторные
+        // loadAllFromPreferences() пересоздают NEVPNConnection и эмитят
+        // NEVPNStatusDidChange → реэнтрантный шторм и утечка mach-портов.
+        if let cachedManager {
+            return cachedManager
+        }
         let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-        return managers.first { $0.localizedDescription == managerDescription }
+        cachedManager = managers.first { $0.localizedDescription == managerDescription }
+        return cachedManager
     }
 
     private func updateStatus(from manager: NETunnelProviderManager) {
